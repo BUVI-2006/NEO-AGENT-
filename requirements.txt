@@ -2,5 +2,5 @@ openai
 pyTelegramBotAPI
 gspread
 oauth2client
-Flask
+flask
 google-api-python-client
