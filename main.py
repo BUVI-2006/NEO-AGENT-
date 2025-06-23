@@ -10,9 +10,7 @@ import json
 import os
 import requests
 from googleapiclient.discovery import build
-from keep_alive import keep_alive
 
-keep_alive()
 
 
 YOUTUBE_API_KEY="AIzaSyDcNr93KxgDJZyr5WPNwZYxi8H21zO24Kc"
@@ -486,16 +484,6 @@ Now parse this message:
     except Exception as e:
         bot.reply_to(message, f"⚠️ Error: {e}")
 
-from flask import Flask
-app=Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Bot is running on Render!"
-
-def keep_alive():
-    port=int(os.environ.get("PORT",8080))   #Render will provide the port here 
-    app.run(host="0.0.0.0",port=port)
 
 
 
