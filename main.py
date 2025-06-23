@@ -10,6 +10,9 @@ import json
 import os
 import requests
 from googleapiclient.discovery import build
+from keep_alive import keep_alive
+
+keep_alive()
 
 
 YOUTUBE_API_KEY="AIzaSyDcNr93KxgDJZyr5WPNwZYxi8H21zO24Kc"
