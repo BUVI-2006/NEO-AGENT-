@@ -10,8 +10,11 @@ import json
 import os
 import requests
 from googleapiclient.discovery import build
+from keep_alive import keep_alive
 
-YOUTUBE_API_KEY="AIzaSyDcNr93KxgDJZyr5WPNwZYxi8H21zO24Kc"
+keep_alive()
+
+YOUTUBE_API_KEY=os.getenv("YOUTUBE_API_KEY")
 
 def youtube_search(query,max_results=2):
     youtube=build("youtube","v3",developerKey=YOUTUBE_API_KEY)
@@ -35,16 +38,15 @@ def youtube_search(query,max_results=2):
 
 
 # Your ChatGPT API key
-openai.api_key="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"
-
+openai.api_key=os.getenv("OPENAI_API_KEY")
 
 # --- SETUP ---
-TELEGRAM_TOKEN = '7947671064:AAFVW0gQEkoeQRTHMMeOxJB6w5TdF6_8qE0'
-bot = telebot.TeleBot(TELEGRAM_TOKEN)
+TELEGRAM_BOT_TOKEN=os.getenv("TELEGRAM_TOKEN")
+bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 USER_ID = 5942792582 
  # Replace with your Telegram user ID
 
-SERVICE_ACCOUNT_FILE = 'credentials.json'
+SERVICE_ACCOUNT_FILE = json.loads(os.getenv("SERVICE_ACCOUNT_JSON"))
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
 
 # --- Google Sheets Setup ---
@@ -52,7 +54,7 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapi
 creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 client = gspread.authorize(creds)
 
-YOUTUBE_API_KEY="AIzaSyDcNr93KxgDJZyr5WPNwZYxi8H21zO24Kc"
+YOUTUBE_API_KEY=os.getenv("YOUTUBE_API_KEY")
 
 
 
@@ -483,7 +485,16 @@ Now parse this message:
     except Exception as e:
         bot.reply_to(message, f"⚠️ Error: {e}")
 
+from flask import Flask
+app=Flask(__name__)
 
+@app.route('/')
+def home():
+    return "Bot is running on Render!"
+
+def keep_alive():
+    port=int(os.environ.get("PORT",8080))   #Render will provide the port here 
+    app.run(host="0.0.0.0",port=port)
 
 
 
