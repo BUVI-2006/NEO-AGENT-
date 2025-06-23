@@ -44,7 +44,7 @@ bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 USER_ID = 5942792582 
  # Replace with your Telegram user ID
 
-SERVICE_ACCOUNT_FILE = json.loads(os.getenv("SERVICE_ACCOUNT_JSON"))
+SERVICE_ACCOUNT_FILE ='credentials.json'
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
 
 # --- Google Sheets Setup ---
