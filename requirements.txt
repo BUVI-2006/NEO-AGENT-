@@ -1,0 +1,6 @@
+openai
+pyTelegramBotAPI
+gspread
+oauth2client
+Flask
+google-api-python-client
