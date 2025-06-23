@@ -12,7 +12,7 @@ import requests
 from googleapiclient.discovery import build
 
 
-YOUTUBE_API_KEY=os.getenv("YOUTUBE_API_KEY")
+YOUTUBE_API_KEY="AIzaSyDcNr93KxgDJZyr5WPNwZYxi8H21zO24Kc"
 
 def youtube_search(query,max_results=2):
     youtube=build("youtube","v3",developerKey=YOUTUBE_API_KEY)
@@ -36,11 +36,11 @@ def youtube_search(query,max_results=2):
 
 
 # Your ChatGPT API key
-openai.api_key=os.getenv("OPENAI_API_KEY")
+openai.api_key="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"
 
 # --- SETUP ---
-TELEGRAM_BOT_TOKEN=os.getenv("TELEGRAM_TOKEN")
-bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
+TELEGRAM_TOKEN='7947671064:AAFVW0gQEkoeQRTHMMeOxJB6w5TdF6_8qE0'
+bot = telebot.TeleBot(TELEGRAM_TOKEN)
 USER_ID = 5942792582 
  # Replace with your Telegram user ID
 
