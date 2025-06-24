@@ -504,7 +504,7 @@ Now parse this message:
 
 if __name__ == "__main__":
     bot.remove_webhook()
-    bot.set_webhook(url=f"{TELEGRAM_TOKEN}")
+    bot.set_webhook(url=f"https://neo-ai.onrender.com/{TELEGRAM_TOKEN}")
     app.run(host="0.0.0.0", port=8080)
 
 
@@ -516,6 +516,6 @@ if __name__ == "__main__":
 
 # --- Start Bot ---
 print("🤖 Bot is running...")
-bot.infinity_polling()
+
 
 
