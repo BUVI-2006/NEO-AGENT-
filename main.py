@@ -1,5 +1,3 @@
-# --- EXAMPLE USAGE ---
-# add_task("Instagram_Content", "Upload Reel", "2025-06-17")
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime,timedelta
@@ -10,6 +8,7 @@ import json
 import os
 import requests
 from googleapiclient.discovery import build
+from flask import Flask , request
 
 
 
@@ -39,13 +38,18 @@ def youtube_search(query,max_results=2):
 # Your ChatGPT API key
 openai.api_key="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"
 
+
+
+
 # --- SETUP ---
 TELEGRAM_TOKEN='7947671064:AAFVW0gQEkoeQRTHMMeOxJB6w5TdF6_8qE0'
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 USER_ID = 5942792582 
+app = Flask(__name__)
+
  # Replace with your Telegram user ID
 
-SERVICE_ACCOUNT_FILE ='credentials.json'
+SERVICE_ACCOUNT_FILE = 'credentials.json'
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
 
 # --- Google Sheets Setup ---
@@ -53,7 +57,7 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapi
 creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 client = gspread.authorize(creds)
 
-YOUTUBE_API_KEY=os.getenv("YOUTUBE_API_KEY")
+YOUTUBE_API_KEY="AIzaSyDcNr93KxgDJZyr5WPNwZYxi8H21zO24Kc"
 
 
 
@@ -309,6 +313,20 @@ def send_dream_form_link(message):
     bot.reply_to(message, f"📝 Log your dream here:\n{form_link}")
 
 
+
+# --- HEALTH CHECK ROUTE ---
+@app.route("/", methods=["GET"])
+def index():
+    return "Bot is alive", 200
+
+# --- WEBHOOK ROUTE ---
+@app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
+def webhook():
+    json_str = request.data.decode("UTF-8")
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return "OK", 200
+
 @bot.message_handler(func=lambda message: True)
 def handle_all(message):
     if message.from_user.id != USER_ID:
@@ -463,7 +481,7 @@ Now parse this message:
             )
             answer = response.choices[0].message["content"]
             bot.send_message(message.chat.id, f"📘 Answer:\n{answer}")
-        
+
         elif intent=="youtube":
             query=data["query"]
             results=youtube_search(query)
@@ -475,15 +493,19 @@ Now parse this message:
 
         else:
             bot.reply_to(message, "⚠️ Couldn't understand your request.")
-        
-        #Try searching youtube videos
-        
 
-        
+        #Try searching youtube videos
+
+
+
 
     except Exception as e:
         bot.reply_to(message, f"⚠️ Error: {e}")
 
+if __name__ == "__main__":
+    bot.remove_webhook()
+    bot.set_webhook(url=f"{TELEGRAM_TOKEN}")
+    app.run(host="0.0.0.0", port=8080)
 
 
 
@@ -495,3 +517,5 @@ Now parse this message:
 # --- Start Bot ---
 print("🤖 Bot is running...")
 bot.infinity_polling()
+
+
