@@ -1,7 +1,8 @@
 openai
-pyTelegramBotAPI
 gspread
 oauth2client
+telebot
 flask
-google-api-python-client
 requests
+google-api-python-client
+pyTelegramBotAPI
