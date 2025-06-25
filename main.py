@@ -387,6 +387,15 @@ If it's a Youtube request:
 
 }}
 
+If the user reports attendance:
+{{
+  "intent": "attendance",
+  "subject": "<subject_name>",
+  "date": "YYYY-MM-DD",
+  "status": "Present" or "Absent",
+  "count": <number_of_classes>
+}}
+
 Now parse this message:
 \"{message.text}\"
 """
@@ -490,6 +499,16 @@ Now parse this message:
             else:
                 for title,url in results:
                     bot.send_message(message.chat.id, f"🎥 *{title}*\n{url}")
+                    
+        elif intent == "attendance":
+            worksheet = client.open("TASK TRACKER").worksheet("Attendance")
+            subject = data.get("subject", "Unknown")
+            date = data.get("date", datetime.today().strftime("%Y-%m-%d"))
+            status = data.get("status", "Present")
+            count = data.get("count", 1)
+
+            worksheet.append_row([subject, date, status, count])
+            bot.send_message(message.chat.id, f"📝 Marked *{status}* for *{subject}* ({count} class{'es' if count > 1 else ''}) on {date}", parse_mode="Markdown")
 
         else:
             bot.reply_to(message, "⚠️ Couldn't understand your request.")
