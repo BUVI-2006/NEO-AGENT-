@@ -396,6 +396,14 @@ If the user reports attendance:
   "count": <number_of_classes>
 }}
 
+If it's asking attendance percentage:
+{{
+  "intent":"attendance_stats,
+  "subject":"<subject>"
+
+}}
+    
+
 Now parse this message:
 \"{message.text}\"
 """
@@ -510,6 +518,33 @@ Now parse this message:
             worksheet.append_row([subject, date, status, count])
             bot.send_message(message.chat.id, f"📝 Marked *{status}* for *{subject}* ({count} class{'es' if count > 1 else ''}) on {date}", parse_mode="Markdown")
 
+        elif intent=="attendance_stats":
+            sheet = client.open("TASK TRACKER").worksheet("Attendance")
+            subject = data["subject"]
+            rows = sheet.get_all_records()
+
+            subject_rows = [r for r in rows if r["Subject"].strip().lower() == subject.lower()]
+            if not subject_rows:
+                bot.send_message(message.chat.id, f"❗ No attendance data found for *{subject}*", parse_mode="Markdown")
+                return
+             total = sum(int(r.get("Count", 0)) for r in subject_rows)
+             present = sum(int(r.get("Count", 0)) for r in subject_rows if r["Status"].strip().lower() == "present")
+
+             if total==0:
+                 percent=0
+             else:
+                 percent=round((present/total)*100,2)
+             
+            bot.send_message(message.chat.id, f"""📊 *{subject} Attendance Stats:*
+                             ✅ Present: {present}
+                             📚 Total: {total}
+                             📈 Percentage: {percent}%""", parse_mode="Markdown")
+
+             
+
+        
+
+ 
         else:
             bot.reply_to(message, "⚠️ Couldn't understand your request.")
 
