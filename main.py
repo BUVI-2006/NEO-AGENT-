@@ -1,6 +1,7 @@
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime,timedelta
+from datetime import date
 import telebot
 from collections import Counter
 import openai
@@ -35,6 +36,8 @@ scheduler.start()
 
 #Ensure it stops on shutdown
 atexit.register(lambda: scheduler.shutdown())
+
+#Adding the activity summary for a day 
 
 
 YOUTUBE_API_KEY="AIzaSyDcNr93KxgDJZyr5WPNwZYxi8H21zO24Kc"
@@ -336,7 +339,7 @@ def send_dream_form_link(message):
 
     form_link = "https://forms.gle/upUDaJj7GziTZDBw5"  # 🔁 Replace with your actual form link
     bot.reply_to(message, f"📝 Log your dream here:\n{form_link}")
-
+   
 
 
 # --- HEALTH CHECK ROUTE ---
@@ -463,6 +466,7 @@ Now parse this message:
                     return
             bot.reply_to(message, f"❌ Task '{data['task']}' not found in {sheet}")
 
+       
         elif intent == "progress":
             all_rows = worksheet.get_all_records()
             total = len(all_rows)
@@ -574,8 +578,7 @@ Now parse this message:
         else:
             bot.reply_to(message, "⚠️ Couldn't understand your request.")
 
-        #Try searching youtube videos
-
+        
 
 
 
