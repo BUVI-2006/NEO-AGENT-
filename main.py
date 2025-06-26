@@ -527,18 +527,19 @@ Now parse this message:
             if not subject_rows:
                 bot.send_message(message.chat.id, f"❗ No attendance data found for *{subject}*", parse_mode="Markdown")
                 return
-             total = sum(int(r.get("Count", 0)) for r in subject_rows)
-             present = sum(int(r.get("Count", 0)) for r in subject_rows if r["Status"].strip().lower() == "present")
+            
+            total = sum(int(r.get("Count", 0)) for r in subject_rows)
+            present = sum(int(r.get("Count", 0)) for r in subject_rows if r["Status"].strip().lower() == "present")
 
-             if total==0:
-                 percent=0
-             else:
-                 percent=round((present/total)*100,2)
-             
+            if total==0:
+                percent=0
+            else:
+                percent=round((present/total)*100,2)
+            
             bot.send_message(message.chat.id, f"""📊 *{subject} Attendance Stats:*
-                             ✅ Present: {present}
-                             📚 Total: {total}
-                             📈 Percentage: {percent}%""", parse_mode="Markdown")
+✅ Present: {present}
+📚 Total: {total}
+📈 Percentage: {percent}%""", parse_mode="Markdown")
 
              
 
