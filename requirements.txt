@@ -7,3 +7,4 @@ flask
 requests
 google-api-python-client
 pyTelegramBotAPI
+APScheduler
