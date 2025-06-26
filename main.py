@@ -9,7 +9,32 @@ import os
 import requests
 from googleapiclient.discovery import build
 from flask import Flask , request
+from apscheduler.schedulers.background import BackgroundScheduler
+from pytz import timezone
+import atexit
 
+scheduler=BackgroundScheduler(timezone='Asia/Kolkata')
+
+def morning_task_alert():
+    try:
+        check_and_notify_all_sheets()
+    except Exception as e:
+        print(f"[Scheduler] Task alert error:{e}")
+        
+def evening_attendance_summary():
+    try:
+
+        bot.send_message(USER_ID,"📝 Don’t forget to log your attendance for today!")
+    except Exception as e:
+        print(f"[Scheduler] Attendance reminder error: {e}")
+        
+scheduler.add_job(morning_task_alert, 'cron', hour=8, minute=0)
+scheduler.add_job(evening_attendance_summary, 'cron',hour=20,minute=0)
+
+scheduler.start()
+
+#Ensure it stops on shutdown
+atexit.register(lambda: scheduler.shutdown())
 
 
 YOUTUBE_API_KEY="AIzaSyDcNr93KxgDJZyr5WPNwZYxi8H21zO24Kc"
