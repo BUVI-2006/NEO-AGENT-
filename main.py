@@ -13,6 +13,8 @@ from flask import Flask , request
 from apscheduler.schedulers.background import BackgroundScheduler
 from pytz import timezone
 import atexit
+import time
+import threading
 
 scheduler=BackgroundScheduler(timezone='Asia/Kolkata')
 
@@ -37,7 +39,35 @@ scheduler.start()
 #Ensure it stops on shutdown
 atexit.register(lambda: scheduler.shutdown())
 
-#Adding the activity summary for a day 
+def check_reminders():
+    while True:
+        try:
+            worksheet = client.open("TASK TRACKER").worksheet("Reminders")
+            data=worksheet.get_all_records()
+            now=datetime.now()
+
+
+            for row in data:
+
+                if row["Status"].lower() !="pending":
+                    continue
+                task=row["Task"]
+                data_str=row["Date"]
+                time_str=row["Time"]
+
+                task_time=datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+                remind_time=task_time - timedelta(minutes=30)
+                
+                if now>= remind_time and now <= task_time:
+                    bot.send_message(USER_ID, f"⏰ *Reminder*: {task} at {time_str} today!", parse_mode="Markdown")
+                    row_num = data.index(row) + 2  # 1 for header, 1 for 0-index
+                    worksheet.update_cell(row_num, 4, "Done")
+        except Exception as e:
+            print(f"[Reminder check error] {e}")
+        time.sleep(60)    
+     
+
+
 
 
 YOUTUBE_API_KEY="AIzaSyDcNr93KxgDJZyr5WPNwZYxi8H21zO24Kc"
@@ -430,6 +460,15 @@ If it's asking attendance percentage:
   "subject":"<subject>"
 
 }}
+
+If it's a reminder:
+{{
+    "intent":"reminder,
+    "task":"<task-name>",
+    "date":"YYYY-MM-DD",
+    "time":"HH:MM"
+ 
+}}
     
 
 Now parse this message:
@@ -570,6 +609,19 @@ Now parse this message:
 📚 Total: {total}
 📈 Percentage: {percent}%""", parse_mode="Markdown")
 
+        elif intent=="reminder":
+            task=data["task"]
+            data_str=data["date"]
+            time_str=data["time"]
+
+            worksheet=client.open("TASK TRACKER").worksheet("Reminders")
+            worksheet.append_row([task,data_str,time_str,"Pending"])
+
+            bot.reply_to(message,f"✅ Reminder saved for *{task}* on {date_str} at {time_str}. I’ll remind you 30 min earlier!", parse_mode="Markdown")
+            
+
+        
+
              
 
         
@@ -584,6 +636,11 @@ Now parse this message:
 
     except Exception as e:
         bot.reply_to(message, f"⚠️ Error: {e}")
+
+reminder_thread = threading.Thread(target=check_reminders)
+reminder_thread.daemon = True
+reminder_thread.start()
+
 
 if __name__ == "__main__":
     bot.remove_webhook()
