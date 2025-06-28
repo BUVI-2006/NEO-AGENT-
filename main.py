@@ -465,8 +465,8 @@ If it's a reminder:
 {{
     "intent":"reminder,
     "task":"<task-name>",
-    "date":"YYYY-MM-DD",
-    "time":"HH:MM"
+    "time":"<HH:MM 24-hour>"
+    "date":"YYYY-MM-DD"
  
 }}
     
@@ -610,14 +610,14 @@ Now parse this message:
 📈 Percentage: {percent}%""", parse_mode="Markdown")
 
         elif intent=="reminder":
-            task=data["task"]
+            reminder_text=data["task"]
             data_str=data["date"]
             time_str=data["time"]
 
             worksheet=client.open("TASK TRACKER").worksheet("Reminders")
-            worksheet.append_row([task,data_str,time_str,"Pending"])
+            worksheet.append_row([reminder_text,date_str,time_str,"Pending"])
 
-            bot.reply_to(message,f"✅ Reminder saved for *{task}* on {date_str} at {time_str}. I’ll remind you 30 min earlier!", parse_mode="Markdown")
+            bot.reply_to(message,f"✅ Reminder saved for *{reminder_text}* on {date_str} at {time_str}. I’ll remind you 30 min earlier!", parse_mode="Markdown")
             
 
         
