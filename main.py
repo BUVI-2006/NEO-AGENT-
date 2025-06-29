@@ -464,7 +464,7 @@ If it's asking attendance percentage:
 If it's a reminder:
 {{
     "intent":"reminder,
-    "task":"<task-name>",
+    "task":"<reminder_text>",
     "time":"<HH:MM 24-hour>"
     "date":"YYYY-MM-DD"
  
@@ -609,15 +609,15 @@ Now parse this message:
 📚 Total: {total}
 📈 Percentage: {percent}%""", parse_mode="Markdown")
 
-        elif intent=="reminder":
+        elif intent =="reminder":
             reminder_text=data["task"]
-            data_str=data["date"]
             time_str=data["time"]
+            date_str=data["date"]
+            sheet = client.open("TASK TRACKER").worksheet("Reminders")
+            sheet.append_row([reminder_text, date_str, time_str, "No"])
+            bot.reply_to(message, f"✅ Reminder set for {reminder_text} on {date_str} at {time_str}")
+            
 
-            worksheet=client.open("TASK TRACKER").worksheet("Reminders")
-            worksheet.append_row([reminder_text,date_str,time_str,"Pending"])
-
-            bot.reply_to(message,f"✅ Reminder saved for *{reminder_text}* on {date_str} at {time_str}. I’ll remind you 30 min earlier!", parse_mode="Markdown")
             
 
         
