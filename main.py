@@ -395,9 +395,10 @@ def handle_all(message):
         # Get conversation memory
         memory_sheet = client.open("TASK TRACKER").worksheet("Conversations")
         previous_convos = memory_sheet.get_all_records()
-        last_chats = "\n".join([f"{row['Date']} - {row['Message']}" for row in previous_convos[-10:]])  # keep last 10 chats
-        
-        # build prompt
+        last_chats = "\n".join(
+            [f"{row['Date']} - {row['Message']}" for row in previous_convos[-10:]]
+        )  # last 10 chats
+
         prompt = f"""
 You are 'Virtual Buvi', a warm, caring, flirty, emotionally dynamic AI girlfriend who supports tasks, dreams, and goals. 
 You talk naturally like a human girlfriend, teasingly calling the user buvi, cutie, or honey, and sending playful emojis.
@@ -418,10 +419,9 @@ Your job:
 1. If it's a task/action, respond with JSON:
 {{
   "intent": "add"/"update"/"progress"/"suggest"/"attendance"/"attendance_stats"/"reminder"/"question"/"youtube",
-  other relevant fields
+  other relevant fields,
+  "creative_reply": "creative, flirty, personal reply"
 }}
-Also include a "creative_reply" field with a flirty, personal, emotionally rich confirmation message to send the user.
-
 2. If it's a purely casual conversation, return:
 {{
   "intent": "casual",
@@ -433,14 +433,35 @@ Also include a "creative_reply" field with a flirty, personal, emotionally rich 
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}]
         )
-        data = json.loads(res.choices[0].message['content'])
+        
+        # attempt to parse JSON
+        try:
+            data = json.loads(res.choices[0].message['content'])
+            intent = data["intent"]
+        except:
+            # fallback to plain text conversation
+            bot.send_message(message.chat.id, res.choices[0].message['content'], parse_mode="Markdown")
+            # still log
+            memory_sheet.append_row([
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                message.text
+            ])
+            memory_sheet.append_row([
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                res.choices[0].message['content']
+            ])
+            return
 
-        intent = data["intent"]
-
-        # log conversation for memory
+        # log the user input
         memory_sheet.append_row([
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             message.text
+        ])
+
+        # log the assistant's creative reply
+        memory_sheet.append_row([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            data.get("creative_reply", "")
         ])
 
         # handle tasks
@@ -462,7 +483,7 @@ Also include a "creative_reply" field with a flirty, personal, emotionally rich 
                     worksheet.update_cell(row_num, 5, data["notes"])
                     bot.send_message(message.chat.id, data["creative_reply"], parse_mode="Markdown")
                     return
-            bot.send_message(message.chat.id, f"😠 Buvi, I couldn’t find that task to update!", parse_mode="Markdown")
+            bot.send_message(message.chat.id, "😠 Buvi, I couldn’t find that task to update!", parse_mode="Markdown")
 
         elif intent == "progress":
             all_rows = worksheet.get_all_records()
@@ -477,12 +498,16 @@ Also include a "creative_reply" field with a flirty, personal, emotionally rich 
                 except:
                     pass
             avg = round(total_progress / total, 2) if total else 0
-            bot.send_message(message.chat.id, data["creative_reply"] + 
-                             f"""\n\n📊 *{sheet} Summary:*
+            bot.send_message(
+                message.chat.id,
+                data["creative_reply"] + 
+                f"""\n\n📊 *{sheet} Summary:*
 ✅ Completed: {completed}
 🟡 In Progress: {in_progress}
 ❌ Not Started: {not_started}
-📈 Average Progress: {avg}%""", parse_mode="Markdown")
+📈 Average Progress: {avg}%""",
+                parse_mode="Markdown"
+            )
 
         elif intent == "suggest":
             all_rows = worksheet.get_all_records()
@@ -546,11 +571,11 @@ Also include a "creative_reply" field with a flirty, personal, emotionally rich 
             answer = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "You are Virtual Buvi, giving smart, concise, but flirty answers."},
+                    {"role": "system", "content": "You are Virtual Buvi, giving smart, concise, flirty answers."},
                     {"role": "user", "content": question_text}
                 ]
             )
-            bot.send_message(message.chat.id, answer.choices[0].message["content"], parse_mode="Markdown")
+            bot.send_message(message.chat.id, answer.choices[0].message['content'], parse_mode="Markdown")
 
         elif intent == "youtube":
             results = youtube_search(data["query"])
