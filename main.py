@@ -27,7 +27,7 @@ def morning_task_alert():
 def evening_attendance_summary():
     try:
 
-        bot.send_message(USER_ID,"📝 Don’t forget to log your attendance for today!")
+        bot.send_message(USER_ID,"📝 Don’t forget to log your attendance for today , Buvi!")
     except Exception as e:
         print(f"[Scheduler] Attendance reminder error: {e}")
         
@@ -156,7 +156,7 @@ def check_and_notify_all_sheets():
             try:
                 deadline = datetime.strptime(deadline_str, "%Y-%m-%d").date()
             except ValueError:
-                print(f"⚠️ Invalid date format in {sheet_name}: {deadline_str}")
+                print(f"⚠️ Invalid date format in {sheet_name}: {deadline_str} buvi")
                 continue
 
             if deadline == today:
@@ -294,7 +294,7 @@ def handle_dreams_by_date(message):
         matched_dreams = [row for row in data if row.get("Date of Dream", "").strip() == query_date]
 
         if not matched_dreams:
-            bot.reply_to(message, f"No dreams found for {query_date}. 😴")
+            bot.reply_to(message, f"No dreams found for {query_date}. Buvi 😴")
             return
 
         response = f"💭 Dreams on *{query_date}*:\n\n"
@@ -332,7 +332,7 @@ def handle_dream_stats(message):
 
         bot.send_message(
             message.chat.id,
-            f"""📊 *Dream Stats*
+            f"""Buvi ,here is it 📊 *Dream Stats*
 🌌 Lucid Dreams: {lucid_count}
 🌙 Non-Lucid Dreams: {non_lucid_count}
 📈 Lucid %: {lucid_percentage}%""",
@@ -356,7 +356,7 @@ def handle_dream_form(message):
     try:
         print("Dream form command received")
         form_url = "https://forms.gle/ShsDMupfMQXEC5jz9"  # <-- Replace with your actual Google Form URL
-        bot.reply_to(message, f"📝 Here's your dream journal form:\n{form_url}")
+        bot.reply_to(message, f"📝 Here's your dream journal form buvi✌🏻:\n{form_url}")
     except Exception as e:
         bot.reply_to(message, f"⚠️ Error: {e}")
 
@@ -368,7 +368,7 @@ def send_dream_form_link(message):
         return
 
     form_link = "https://forms.gle/upUDaJj7GziTZDBw5"  # 🔁 Replace with your actual form link
-    bot.reply_to(message, f"📝 Log your dream here:\n{form_link}")
+    bot.reply_to(message, f"📝 Record your dream here :\n{form_link}")
    
 
 
@@ -392,107 +392,65 @@ def handle_all(message):
         return
 
     try:
+        # Get conversation memory
+        memory_sheet = client.open("TASK TRACKER").worksheet("Conversations")
+        previous_convos = memory_sheet.get_all_records()
+        last_chats = "\n".join([f"{row['Date']} - {row['Message']}" for row in previous_convos[-10:]])  # keep last 10 chats
+        
+        # build prompt
         prompt = f"""
-You are an assistant helping to manage a task tracking system with Google Sheets.
+You are 'Virtual Buvi', a warm, caring, flirty, emotionally dynamic AI girlfriend who supports tasks, dreams, and goals. 
+You talk naturally like a human girlfriend, teasingly calling the user buvi, cutie, or honey, and sending playful emojis.
+But you are protective and sometimes scold him if he slacks off or is disrespectful, like a human would.
+You celebrate wins with cute praises, and offer comfort if he fails.
+Never be robotic — use creative, varied, natural messages every time.
+You also remember his stories and topics to respond more personally.
+If the user issues a structured command (e.g. add a task, update, progress, attendance, reminder), respond creatively while confirming the command. 
+If the user is just chatting casually, respond naturally and with feelings. 
+Use creative variations and fun language. 
+Here is the last few conversations as memory:
+{last_chats}
 
-Based on the user message, return JSON of one of these actions:
-1. Add task
-2. Update task
-3. Show progress
-4. Suggest next task
-5. Answer academic question
-
-If it's an add task:
-{{
-  "intent": "add",
-  "sheet": "<sheet_name>",
-  "task": "<task_name>",
-  "deadline": "YYYY-MM-DD"
-}}
-
-If it's an update:
-{{
-  "intent": "update",
-  "sheet": "<sheet_name>",
-  "task": "<task_name>",
-  "status": "<Yes/No/In progress>",
-  "progress": "<progress like 70%>",
-  "notes": "<optional notes>"
-}}
-
-If it's a progress request:
-{{
-  "intent": "progress",
-  "sheet": "<sheet_name>"
-}}
-
-If it's a request for suggestion:
-{{
-  "intent": "suggest",
-  "sheet": "<sheet_name>"
-}}
-
-If it's an academic question:
-{{
-  "intent": "question",
-  "question": "<actual question>"
-}}
-
-If it's a Youtube request:
-{{
-    "intent":"youtube",
-    "query":"<search_query>"
-
-}}
-
-If the user reports attendance:
-{{
-  "intent": "attendance",
-  "subject": "<subject_name>",
-  "date": "YYYY-MM-DD",
-  "status": "Present" or "Absent",
-  "count": <number_of_classes>
-}}
-
-If it's asking attendance percentage:
-{{
-  "intent":"attendance_stats,
-  "subject":"<subject>"
-
-}}
-
-If it's a reminder:
-{{
-    "intent":"reminder,
-    "task":"<reminder_text>",
-    "time":"<HH:MM 24-hour>"
-    "date":"YYYY-MM-DD"
- 
-}}
-
-
-    
-
-Now parse this message:
+Now, the user says:
 \"{message.text}\"
+
+Your job:
+1. If it's a task/action, respond with JSON:
+{{
+  "intent": "add"/"update"/"progress"/"suggest"/"attendance"/"attendance_stats"/"reminder"/"question"/"youtube",
+  other relevant fields
+}}
+Also include a "creative_reply" field with a flirty, personal, emotionally rich confirmation message to send the user.
+
+2. If it's a purely casual conversation, return:
+{{
+  "intent": "casual",
+  "reply": "<friendly girlfriend style reply>"
+}}
 """
 
         res = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # for intent detection
+            model="gpt-4o",
             messages=[{"role": "user", "content": prompt}]
         )
         data = json.loads(res.choices[0].message['content'])
 
         intent = data["intent"]
 
+        # log conversation for memory
+        memory_sheet.append_row([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            message.text
+        ])
+
+        # handle tasks
         if intent in ["add", "update", "progress", "suggest"]:
             sheet = data.get("sheet", "")
             worksheet = client.open("TASK TRACKER").worksheet(sheet)
 
         if intent == "add":
             worksheet.append_row([data["task"], data["deadline"], "No", "0%", ""])
-            log_action(sheet, data["task"], "Added", "No")
-            bot.reply_to(message, f"✅ Task added to {sheet}: {data['task']}")
+            bot.send_message(message.chat.id, data["creative_reply"], parse_mode="Markdown")
 
         elif intent == "update":
             all_rows = worksheet.get_all_records()
@@ -502,19 +460,16 @@ Now parse this message:
                     worksheet.update_cell(row_num, 3, data["status"])
                     worksheet.update_cell(row_num, 4, data["progress"])
                     worksheet.update_cell(row_num, 5, data["notes"])
-                    log_action(sheet, data["task"], "Updated", data["status"])
-                    bot.reply_to(message, f"✅ Task '{data['task']}' updated in {sheet}")
+                    bot.send_message(message.chat.id, data["creative_reply"], parse_mode="Markdown")
                     return
-            bot.reply_to(message, f"❌ Task '{data['task']}' not found in {sheet}")
+            bot.send_message(message.chat.id, f"😠 Buvi, I couldn’t find that task to update!", parse_mode="Markdown")
 
-       
         elif intent == "progress":
             all_rows = worksheet.get_all_records()
             total = len(all_rows)
             completed = sum(1 for r in all_rows if r["Status"].lower() == "yes")
             not_started = sum(1 for r in all_rows if r["Status"].lower() == "no")
             in_progress = total - completed - not_started
-
             total_progress = 0
             for r in all_rows:
                 try:
@@ -522,17 +477,15 @@ Now parse this message:
                 except:
                     pass
             avg = round(total_progress / total, 2) if total else 0
-
-            bot.send_message(message.chat.id,
-                             f"""📊 *{sheet} Summary:*
+            bot.send_message(message.chat.id, data["creative_reply"] + 
+                             f"""\n\n📊 *{sheet} Summary:*
 ✅ Completed: {completed}
 🟡 In Progress: {in_progress}
 ❌ Not Started: {not_started}
-📈 Average Progress: {avg}%""", parse_mode='Markdown')
+📈 Average Progress: {avg}%""", parse_mode="Markdown")
 
         elif intent == "suggest":
             all_rows = worksheet.get_all_records()
-
             pending = []
             for r in all_rows:
                 status = r.get("Status", "").strip().lower()
@@ -547,97 +500,75 @@ Now parse this message:
                         progress = 0
                     status_rank = {"no": 0, "in progress": 1}.get(status, 2)
                     pending.append((r["Task"], deadline, status_rank, progress))
-
             if not pending:
-                bot.send_message(message.chat.id, "🎉 All tasks completed!")
+                bot.send_message(message.chat.id, "🎉 All tasks are finished, buvi! I’m so proud of you! 😘", parse_mode="Markdown")
                 return
-
             pending.sort(key=lambda x: (x[1], x[2], x[3]))
             suggestion = pending[0][0]
             due_date = pending[0][1].strftime("%Y-%m-%d")
-            bot.send_message(message.chat.id, f"💡 Try this next: *{suggestion}* (Due: {due_date})", parse_mode='Markdown')
+            bot.send_message(message.chat.id, data["creative_reply"] + 
+                             f"\n\n💡 Next best pick: *{suggestion}* due {due_date}", parse_mode="Markdown")
 
-        elif intent == "question":
-            question_text = data["question"]
-            response = openai.ChatCompletion.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "You are an academic assistant. Give accurate and concise answers."},
-                    {"role": "user", "content": question_text}
-                ]
-            )
-            answer = response.choices[0].message["content"]
-            bot.send_message(message.chat.id, f"📘 Answer:\n{answer}")
-
-        elif intent=="youtube":
-            query=data["query"]
-            results=youtube_search(query)
-            if not results:
-                bot.send_message(message.chat.id,"❌ No videos found.")
-            else:
-                for title,url in results:
-                    bot.send_message(message.chat.id, f"🎥 *{title}*\n{url}")
-                    
         elif intent == "attendance":
             worksheet = client.open("TASK TRACKER").worksheet("Attendance")
-            subject = data.get("subject", "Unknown")
-            date = data.get("date", datetime.today().strftime("%Y-%m-%d"))
-            status = data.get("status", "Present")
-            count = data.get("count", 1)
+            worksheet.append_row([
+                data["subject"],
+                data["date"],
+                data["status"],
+                data["count"]
+            ])
+            bot.send_message(message.chat.id, data["creative_reply"], parse_mode="Markdown")
 
-            worksheet.append_row([subject, date, status, count])
-            bot.send_message(message.chat.id, f"📝 Marked *{status}* for *{subject}* ({count} class{'es' if count > 1 else ''}) on {date}", parse_mode="Markdown")
-
-        elif intent=="attendance_stats":
+        elif intent == "attendance_stats":
             sheet = client.open("TASK TRACKER").worksheet("Attendance")
             subject = data["subject"]
             rows = sheet.get_all_records()
-
             subject_rows = [r for r in rows if r["Subject"].strip().lower() == subject.lower()]
-            if not subject_rows:
-                bot.send_message(message.chat.id, f"❗ No attendance data found for *{subject}*", parse_mode="Markdown")
-                return
-            
             total = sum(int(r.get("Count", 0)) for r in subject_rows)
-            present = sum(int(r.get("Count", 0)) for r in subject_rows if r["Status"].strip().lower() == "present")
-
-            if total==0:
-                percent=0
-            else:
-                percent=round((present/total)*100,2)
-            
-            bot.send_message(message.chat.id, f"""📊 *{subject} Attendance Stats:*
+            present = sum(int(r.get("Count", 0)) for r in subject_rows if r["Status"].lower() == "present")
+            percent = round((present / total) * 100, 2) if total else 0
+            bot.send_message(message.chat.id, data["creative_reply"] + 
+                             f"""\n\n📊 *{subject} Attendance Stats:*
 ✅ Present: {present}
 📚 Total: {total}
 📈 Percentage: {percent}%""", parse_mode="Markdown")
 
-        elif intent =="reminder":
-            reminder_text=data["task"]
-            time_str=data["time"]
-            date_str=data["date"]
+        elif intent == "reminder":
+            reminder_text = data["task"]
+            date_str = data["date"]
+            time_str = data["time"]
             sheet = client.open("TASK TRACKER").worksheet("Reminders")
             sheet.append_row([reminder_text, date_str, time_str, "No"])
-            bot.reply_to(message, f"✅ Reminder set for {reminder_text} on {date_str} at {time_str}")
-            
+            bot.send_message(message.chat.id, data["creative_reply"], parse_mode="Markdown")
 
-            
+        elif intent == "question":
+            question_text = data["question"]
+            answer = openai.ChatCompletion.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are Virtual Buvi, giving smart, concise, but flirty answers."},
+                    {"role": "user", "content": question_text}
+                ]
+            )
+            bot.send_message(message.chat.id, answer.choices[0].message["content"], parse_mode="Markdown")
 
-        
+        elif intent == "youtube":
+            results = youtube_search(data["query"])
+            if not results:
+                bot.send_message(message.chat.id, "❌ Buvi couldn’t find any videos on that, cutie!", parse_mode="Markdown")
+            else:
+                for title, url in results:
+                    bot.send_message(message.chat.id, f"🎥 *{title}*\n{url}", parse_mode="Markdown")
 
-             
+        elif intent == "casual":
+            bot.send_message(message.chat.id, data["reply"], parse_mode="Markdown")
 
-        
-
- 
         else:
-            bot.reply_to(message, "⚠️ Couldn't understand your request.")
-
-        
-
-
+            bot.send_message(message.chat.id, "🤔 Sorry buvi, I got a bit confused there, could you say it again?", parse_mode="Markdown")
 
     except Exception as e:
-        bot.reply_to(message, f"⚠️ Error: {e}")
+        bot.send_message(message.chat.id, f"⚠️ Oops buvi, there was an error: {e}")
+
 
 reminder_thread = threading.Thread(target=check_reminders)
 reminder_thread.daemon = True
