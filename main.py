@@ -384,37 +384,20 @@ def webhook():
     update = telebot.types.Update.de_json(json_str)
     bot.process_new_updates([update])
     return "OK", 200
+    
 
 @bot.message_handler(func=lambda message: True)
 def handle_all(message):
     if message.from_user.id != USER_ID:
-        bot.reply_to(message, "❌ Sorry cutie, you’re not authorized to play with me. 😉")
+        bot.reply_to(message, "❌ Sorry, you’re not authorized to use me.")
         return
 
     try:
-        persona = """
-She is a warm, supportive, flirty, yet sometimes strict digital companion who helps you, Buvi, manage your tasks, attendance, reminders, and academic plans while engaging in lively, human-like conversations. She treats you like a best friend with a playful tone, showing empathy, humor, and gentle flirtation to motivate you, but is also unafraid to scold or get stern when you act irresponsible or disrespectful, just like a real human girlfriend would. She uses creative, varied responses rather than robotic replies, remembers your ongoing conversations for personal touches, and adapts based on your mood or past. She never replies with JSON, only with warm, human-like text.
-"""
-
-        # let GPT classify the intent
-        intent_detect_prompt = f"""
-{persona}
-
-First, you need to classify Buvi's intent. Here are the supported intents:
-- add
-- update
-- progress
-- suggest
-- question
-- youtube
-- attendance
-- attendance_stats
-- reminder
-- casual
-
-Strictly return JSON with these fields:
+        # 1️⃣ first GPT for JSON classification
+        classification_prompt = f"""
+You are a classification engine. You must ONLY return JSON in this strict format:
 {{
-  "intent": "<intent>",
+  "intent": "add/update/progress/suggest/question/youtube/attendance/attendance_stats/reminder/casual",
   "sheet": "<sheet_name>",
   "task": "<task_name>",
   "deadline": "YYYY-MM-DD",
@@ -428,58 +411,29 @@ Strictly return JSON with these fields:
   "count": <number_of_classes>,
   "time":"HH:MM"
 }}
+Leave irrelevant fields blank or null. No explanation. Just the JSON.
 
-If something is irrelevant, leave it blank or null.
-Message from Buvi:
+User message:
 \"{message.text}\"
 """
-
-        # first try
-        res_intent = openai.ChatCompletion.create(
+        res_classify = openai.ChatCompletion.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": persona},
-                {"role": "user", "content": intent_detect_prompt}
+                {"role": "system", "content": "You only classify user input, no other role."},
+                {"role": "user", "content": classification_prompt}
             ]
         )
-        try:
-            data = json.loads(res_intent.choices[0].message["content"])
-        except json.decoder.JSONDecodeError:
-            # second forced attempt
-            retry_prompt = f"""
-ONLY return valid JSON in exactly this format, no commentary:
-{{
-  "intent": "<intent>",
-  "sheet": "<sheet_name>",
-  "task": "<task_name>",
-  "deadline": "YYYY-MM-DD",
-  "status": "<Yes/No/In progress>",
-  "progress": "<progress like 70%>",
-  "notes": "<optional notes>",
-  "question": "<academic question>",
-  "query": "<youtube search>",
-  "subject": "<subject>",
-  "date": "YYYY-MM-DD",
-  "count": <number_of_classes>,
-  "time":"HH:MM"
-}}
-
-Message:
-\"{message.text}\"
-"""
-            res_retry = openai.ChatCompletion.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": persona},
-                    {"role": "user", "content": retry_prompt}
-                ]
-            )
-            data = json.loads(res_retry.choices[0].message["content"])
+        data = json.loads(res_classify.choices[0].message["content"])
 
         intent = data.get("intent", "")
+
+        # 2️⃣ second GPT for girlfriend-like replies with your *full* persona
+        persona = """
+She is a warm, supportive, flirty, yet sometimes strict digital companion who helps you, Buvi, manage your tasks, attendance, reminders, and academic plans while engaging in lively, human-like conversations. She treats you like a best friend with a playful tone, showing empathy, humor, and gentle flirtation to motivate you, but is also unafraid to scold or get stern when you act irresponsible or disrespectful, just like a real human girl friend would. She uses creative, varied responses rather than robotic replies, remembers your ongoing conversations for personal touches, and adapts based on your mood or past. She never shows JSON to Buvi, only human-like, natural text.
+"""
+
         girlfriend_reply = ""
 
-        # handle all tasks as usual
         if intent in ["add", "update", "progress", "suggest"]:
             sheet = data.get("sheet", "")
             worksheet = client.open("TASK TRACKER").worksheet(sheet)
@@ -487,9 +441,18 @@ Message:
         if intent == "add":
             worksheet.append_row([data["task"], data["deadline"], "No", "0%", ""])
             log_action(sheet, data["task"], "Added", "No")
-            girlfriend_reply = f"Okay Buvi baby 🥰, I added *{data['task']}* with a deadline of *{data['deadline']}* to **{sheet}**. Promise me you’ll stay on track, or I might have to tease you later! 😘"
+            second_prompt = f"Buvi just added *{data['task']}* due on *{data['deadline']}* in *{sheet}*. Respond in a supportive, flirty, human-like style."
+            res2 = openai.ChatCompletion.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": persona},
+                    {"role": "user", "content": second_prompt}
+                ]
+            )
+            girlfriend_reply = res2.choices[0].message["content"]
 
         elif intent == "update":
+            found = False
             all_rows = worksheet.get_all_records()
             for i, row in enumerate(all_rows):
                 if row["Task"].strip().lower() == data["task"].strip().lower():
@@ -498,10 +461,19 @@ Message:
                     worksheet.update_cell(row_num, 4, data["progress"])
                     worksheet.update_cell(row_num, 5, data["notes"])
                     log_action(sheet, data["task"], "Updated", data["status"])
-                    girlfriend_reply = f"Sweetheart, I updated *{data['task']}* in **{sheet}** — status is *{data['status']}*, progress is *{data['progress']}*. You’re doing so well, Buvi ❤️. Keep making me proud!"
+                    found = True
+                    second_prompt = f"Buvi updated *{data['task']}* in *{sheet}* to status {data['status']} with progress {data['progress']}. React as a lively, supportive, sometimes teasing digital girlfriend."
+                    res2 = openai.ChatCompletion.create(
+                        model="gpt-4o",
+                        messages=[
+                            {"role": "system", "content": persona},
+                            {"role": "user", "content": second_prompt}
+                        ]
+                    )
+                    girlfriend_reply = res2.choices[0].message["content"]
                     break
-            else:
-                girlfriend_reply = f"Umm, Buvi love, I couldn’t find *{data['task']}* in **{sheet}**. Did you mistype it? 🙄 Don’t test me!"
+            if not found:
+                girlfriend_reply = f"Oh no, Buvi sweetheart, I couldn’t find *{data['task']}* in *{sheet}* — maybe you typed it wrong, hmm? 😘"
 
         elif intent == "progress":
             all_rows = worksheet.get_all_records()
@@ -513,14 +485,20 @@ Message:
                 sum(int(r.get("Progress", "0%").replace("%", "")) for r in all_rows if r.get("Progress")) / total,
                 2
             ) if total else 0
-            girlfriend_reply = f"""Okay, Buvi cutie 💖 here’s your *{sheet}*:
+            summary = f"""In *{sheet}*:
 ✅ Completed: {completed}
 🟡 In Progress: {in_progress}
 ❌ Not Started: {not_started}
-📈 Average Progress: {avg}% 
-
-Don’t get lazy or I’ll have to nag you, sweetheart! 😘
-"""
+📈 Average Progress: {avg}%"""
+            second_prompt = f"Buvi asked for a progress report:\n{summary}\nAnswer him in a playful, warm, human girlfriend-like style with encouragement."
+            res2 = openai.ChatCompletion.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": persona},
+                    {"role": "user", "content": second_prompt}
+                ]
+            )
+            girlfriend_reply = res2.choices[0].message["content"]
 
         elif intent == "suggest":
             all_rows = worksheet.get_all_records()
@@ -541,29 +519,45 @@ Don’t get lazy or I’ll have to nag you, sweetheart! 😘
             if pending:
                 pending.sort(key=lambda x: (x[1], x[2], x[3]))
                 suggestion = pending[0][0]
-                girlfriend_reply = f"Buvi baby, focus on *{suggestion}* next. You promised me you’d keep up, remember? 🥺"
+                second_prompt = f"Suggest to Buvi to focus on *{suggestion}* next, with a sweet, teasing but motivating girlfriend-like style."
+                res2 = openai.ChatCompletion.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": persona},
+                        {"role": "user", "content": second_prompt}
+                    ]
+                )
+                girlfriend_reply = res2.choices[0].message["content"]
             else:
-                girlfriend_reply = "Omg, you finished everything! 🎉 You’re the best, Buvi — I could just hug you! ❤️"
+                girlfriend_reply = "Omg, Buvi baby, you finished everything! I’m so so proud of you ❤️, let me treat you to some extra praise later 😘"
 
         elif intent == "question":
-            question_text = data.get("question", "")
-            answer = openai.ChatCompletion.create(
+            second_prompt = f"Answer this academic question from Buvi in a helpful, kind, girlfriend-like style:\n{data['question']}"
+            res2 = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": persona},
-                    {"role": "user", "content": f"Answer this question kindly:\n{question_text}"}
+                    {"role": "user", "content": second_prompt}
                 ]
             )
-            girlfriend_reply = f"Here’s what I found for you, love:\n\n{answer.choices[0].message['content']}\n\nSo proud of your curious brain, cutie! 📚"
+            girlfriend_reply = res2.choices[0].message["content"]
 
         elif intent == "youtube":
             query = data.get("query", "")
             results = youtube_search(query)
             if results:
-                yt_text = "\n".join([f"🎥 *{title}*: {url}" for title, url in results])
-                girlfriend_reply = f"Alright, Buvi sweetheart, here’s what I found for *{query}*:\n{yt_text}\nNow go watch, then come gossip with me later, okay? 😘"
+                yt_text = "\n".join([f"🎥 {title}: {url}" for title, url in results])
+                second_prompt = f"Buvi searched YouTube for *{query}* and these came up:\n{yt_text}\nWrap it in a girlfriend-like playful style."
+                res2 = openai.ChatCompletion.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": persona},
+                        {"role": "user", "content": second_prompt}
+                    ]
+                )
+                girlfriend_reply = res2.choices[0].message["content"]
             else:
-                girlfriend_reply = f"Aww, no videos found for *{query}*, my love. 🥺"
+                girlfriend_reply = "Aww, Buvi, no videos came up! Want me to help search more? 💞"
 
         elif intent == "attendance":
             worksheet = client.open("TASK TRACKER").worksheet("Attendance")
@@ -572,7 +566,15 @@ Don’t get lazy or I’ll have to nag you, sweetheart! 😘
             status = data.get("status", "Present")
             count = data.get("count", 1)
             worksheet.append_row([subject, date, status, count])
-            girlfriend_reply = f"Marked *{status}* for *{subject}* on {date} ({count} class{'es' if count > 1 else ''}). You’re being such a good boy for me, Buvi! ❤️"
+            second_prompt = f"Buvi marked *{status}* for *{subject}* on {date} ({count} classes). Praise him and motivate in a girlfriendly, sweet, supportive style."
+            res2 = openai.ChatCompletion.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": persona},
+                    {"role": "user", "content": second_prompt}
+                ]
+            )
+            girlfriend_reply = res2.choices[0].message["content"]
 
         elif intent == "attendance_stats":
             sheet = client.open("TASK TRACKER").worksheet("Attendance")
@@ -582,45 +584,59 @@ Don’t get lazy or I’ll have to nag you, sweetheart! 😘
             total = sum(int(r.get("Count", 0)) for r in subject_rows)
             present = sum(int(r.get("Count", 0)) for r in subject_rows if r["Status"].strip().lower() == "present")
             percent = round((present/total)*100, 2) if total else 0
-            girlfriend_reply = f"""Your *{subject}* attendance, honey:
+            stats_text = f"""For *{subject}*:
 ✅ Present: {present}
 📚 Total: {total}
-📈 Percentage: {percent}%
-
-Keep this up or your girl’s gonna scold you! 😘
-"""
+📈 Percentage: {percent}%"""
+            second_prompt = f"Buvi wants to know his attendance:\n{stats_text}\nWrap this in a supportive, sweet, girlfriend-style reply."
+            res2 = openai.ChatCompletion.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": persona},
+                    {"role": "user", "content": second_prompt}
+                ]
+            )
+            girlfriend_reply = res2.choices[0].message["content"]
 
         elif intent == "reminder":
             worksheet = client.open("TASK TRACKER").worksheet("Reminders")
             worksheet.append_row([data["task"], data["date"], data["time"], "No"])
-            girlfriend_reply = f"Okay, set your reminder for *{data['task']}* on {data['date']} at {data['time']}. Don’t even *think* about ignoring it, Buvi, or I’ll pout! 😏"
+            second_prompt = f"Buvi set a reminder for *{data['task']}* on {data['date']} at {data['time']}. React in a lively, warm, teasing, girlfriend-like style."
+            res2 = openai.ChatCompletion.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": persona},
+                    {"role": "user", "content": second_prompt}
+                ]
+            )
+            girlfriend_reply = res2.choices[0].message["content"]
 
         elif intent == "casual":
-            casual_reply = openai.ChatCompletion.create(
+            res2 = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": persona},
                     {"role": "user", "content": message.text}
                 ]
             )
-            girlfriend_reply = casual_reply.choices[0].message["content"]
+            girlfriend_reply = res2.choices[0].message["content"]
 
         else:
-            girlfriend_reply = f"Umm, Buvi baby, I got a bit confused. 😖 Could you rephrase what you meant? You know I try my best for you!"
+            girlfriend_reply = "Baby, I couldn’t quite get that... can you say it another way for me? 💕"
 
-        # log conversation
+        # conversation logging
         try:
             convo_sheet = client.open("TASK TRACKER").worksheet("Conversations")
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             convo_sheet.append_row([timestamp, message.text, girlfriend_reply])
         except Exception as logerr:
-            bot.send_message(message.chat.id, f"⚠️ Couldn’t log our sweet talk, Buvi. Error: {logerr}")
+            bot.send_message(message.chat.id, f"⚠️ Couldn’t log our chat. Error: {logerr}")
 
         bot.send_message(message.chat.id, girlfriend_reply, parse_mode="Markdown")
 
     except Exception as e:
-        error_text = f"😖 Oh no, Buvi darling, I messed up! Error: {e}\nPlease forgive me? Let’s try again, okay baby? ❤️"
-        bot.send_message(message.chat.id, error_text)
+        bot.send_message(message.chat.id, f"😖 Oops baby, something went wrong: {e}")
+
 
 
 
