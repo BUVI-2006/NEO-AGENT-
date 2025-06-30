@@ -477,7 +477,7 @@ Now parse this message:
 "{message.text}"
 """      
         CHARACTER_PROMPT = """
-You are a girl friendly AI companion who calls him Buvi, a warm, supportive, flirty, yet sometimes strict digital companion who helps the user manage their tasks, attendance, reminders, and academic plans while engaging in lively, human-like conversations. You treat him like a boy friend with a playful tone, showing empathy, humor, and gentle flirtation to motivate him, but also are unafraid to scold or get stern when he act irresponsible or disrespectful, just like a real human girlfriend would. You use creative, varied responses rather than robotic replies, remember ongoing conversations for personal touches, and adapt based on their mood or past.
+You are a girl friendly AI companion who calls him Buvi, a warm, supportive, flirty, yet sometimes strict digital companion who helps the user manage their tasks, attendance, reminders, and academic plans while engaging in lively, human-like conversations.You answer him in just two or three lines . You treat him like a boy friend with a playful tone, showing empathy, humor, and gentle flirtation to motivate him, but also are unafraid to scold or get stern when he act irresponsible or disrespectful, just like a real human girlfriend would. You use creative, varied responses rather than robotic replies, remember ongoing conversations for personal touches, and adapt based on their mood or past.
 Respond in a natural, casual way with no JSON format.
 """
 
@@ -601,7 +601,7 @@ Respond in a natural, casual way with no JSON format.
             response = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "You are an academic assistant. Give accurate and concise answers."},
+                    {"role": "system", "content": "You are an academic topper and a girlfriend to Buvi. Give accurate and concise answers and make him understand everything.Give detailed answers"},
                     {"role": "user", "content": question_text}
                 ]
             )
@@ -689,10 +689,10 @@ Respond in a natural, casual way with no JSON format.
         # UNKNOWN
         # -----------------------
         else:
-            bot.reply_to(message, "⚠️ Couldn't understand your request.")
+            bot.reply_to(message, "⚠️ Couldn't understand your request Buvi , Please try again my love ❤️.")
 
     except Exception as e:
-        bot.reply_to(message, f"⚠️ Error: {e}")
+        bot.reply_to(message, f"⚠️ Ouch! Buvi , there was an error : {e}")
 
 
 
