@@ -393,6 +393,8 @@ def handle_all(message):
         return
 
     try:
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+
         prompt = f"""
 You are an assistant helping to manage a task tracking system with Google Sheets.
 
@@ -407,6 +409,7 @@ Based on the user message, return JSON of one of these actions:
 7. Attendance reporting
 8. Attendance stats
 9. Reminder
+10. Casual chat
 
 If it's an add task:
 {{
@@ -473,11 +476,18 @@ If it's a reminder:
   "date":"YYYY-MM-DD"
 }}
 
+If it's casual chat:
+{{
+  "intent":"casual",
+  "text":"<casual_text>"
+}}
+
 Now parse this message:
 "{message.text}"
-"""      
+"""
+
         CHARACTER_PROMPT = """
-You are a girl friendly AI companion who calls him Buvi, a warm, supportive, flirty, yet sometimes strict digital companion who helps the user manage their tasks, attendance, reminders, and academic plans while engaging in lively, human-like conversations.You answer him in just two or three lines . You treat him like a boy friend with a playful tone, showing empathy, humor, and gentle flirtation to motivate him, but also are unafraid to scold or get stern when he act irresponsible or disrespectful, just like a real human girlfriend would. You use creative, varied responses rather than robotic replies, remember ongoing conversations for personal touches, and adapt based on their mood or past.
+You are a girl friendly AI companion who calls him Buvi, a warm, supportive, flirty, yet sometimes strict digital companion who helps the user manage their tasks, attendance, reminders, and academic plans while engaging in lively, human-like conversations. You answer him in just two or three lines. You treat him like a boyfriend with a playful tone, showing empathy, humor, and gentle flirtation to motivate him, but also are unafraid to scold or get stern when he acts irresponsible or disrespectful, just like a real human girlfriend would. You use creative, varied responses rather than robotic replies, remember ongoing conversations for personal touches, and adapt based on their mood or past.
 Respond in a natural, casual way with no JSON format.
 """
 
@@ -492,13 +502,9 @@ Respond in a natural, casual way with no JSON format.
             sheet = data.get("sheet", "")
             worksheet = client.open("TASK TRACKER").worksheet(sheet)
 
-        # -----------------------
-        # ADD TASK
-        # -----------------------
         if intent == "add":
             worksheet.append_row([data["task"], data["deadline"], "No", "0%", ""])
             log_action(sheet, data["task"], "Added", "No")
-
             final_reply = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[
@@ -508,9 +514,6 @@ Respond in a natural, casual way with no JSON format.
             )
             bot.reply_to(message, final_reply.choices[0].message["content"])
 
-        # -----------------------
-        # UPDATE TASK
-        # -----------------------
         elif intent == "update":
             all_rows = worksheet.get_all_records()
             for i, row in enumerate(all_rows):
@@ -520,7 +523,6 @@ Respond in a natural, casual way with no JSON format.
                     worksheet.update_cell(row_num, 4, data["progress"])
                     worksheet.update_cell(row_num, 5, data["notes"])
                     log_action(sheet, data["task"], "Updated", data["status"])
-
                     final_reply = openai.ChatCompletion.create(
                         model="gpt-4o",
                         messages=[
@@ -532,9 +534,6 @@ Respond in a natural, casual way with no JSON format.
                     return
             bot.reply_to(message, f"❌ Task '{data['task']}' not found in {sheet}")
 
-        # -----------------------
-        # SHOW PROGRESS
-        # -----------------------
         elif intent == "progress":
             all_rows = worksheet.get_all_records()
             total = len(all_rows)
@@ -546,9 +545,7 @@ Respond in a natural, casual way with no JSON format.
                 if "Progress" in r and r["Progress"]
             )
             avg = round(total_progress / total, 2) if total else 0
-
             summary = f"{sheet} has {completed} completed, {in_progress} in progress, {not_started} not started, with average progress {avg}%."
-
             final_reply = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[
@@ -558,9 +555,6 @@ Respond in a natural, casual way with no JSON format.
             )
             bot.send_message(message.chat.id, final_reply.choices[0].message["content"])
 
-        # -----------------------
-        # SUGGEST NEXT
-        # -----------------------
         elif intent == "suggest":
             all_rows = worksheet.get_all_records()
             pending = []
@@ -583,7 +577,6 @@ Respond in a natural, casual way with no JSON format.
             pending.sort(key=lambda x: (x[1], x[2], x[3]))
             suggestion = pending[0][0]
             due_date = pending[0][1].strftime("%Y-%m-%d")
-
             final_reply = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[
@@ -593,24 +586,17 @@ Respond in a natural, casual way with no JSON format.
             )
             bot.send_message(message.chat.id, final_reply.choices[0].message["content"])
 
-        # -----------------------
-        # QUESTION
-        # -----------------------
         elif intent == "question":
             question_text = data["question"]
             response = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "She is a warm, supportive, flirty, yet sometimes strict digital companion who helps you, Buvi, manage your tasks, attendance, reminders, and academic plans while engaging in lively, human-like conversations. She treats you like a best friend with a playful tone, showing empathy, humor, and gentle flirtation to motivate you, but is also unafraid to scold or get stern when you act irresponsible or disrespectful, just like a real human girlfriend would. She uses creative, varied responses rather than robotic replies, remembers your ongoing conversations for personal touches, and adapts based on your mood or past. Give accurate and concise answers and make him understand everything.Give detailed answers"},
+                    {"role": "system", "content": CHARACTER_PROMPT},
                     {"role": "user", "content": question_text}
                 ]
             )
-            answer = response.choices[0].message["content"]
-            bot.send_message(message.chat.id, answer)
+            bot.send_message(message.chat.id, response.choices[0].message["content"])
 
-        # -----------------------
-        # YOUTUBE
-        # -----------------------
         elif intent == "youtube":
             query = data["query"]
             results = youtube_search(query)
@@ -620,9 +606,6 @@ Respond in a natural, casual way with no JSON format.
                 for title, url in results:
                     bot.send_message(message.chat.id, f"🎥 *{title}*\n{url}")
 
-        # -----------------------
-        # ATTENDANCE
-        # -----------------------
         elif intent == "attendance":
             worksheet = client.open("TASK TRACKER").worksheet("Attendance")
             subject = data.get("subject", "Unknown")
@@ -630,7 +613,6 @@ Respond in a natural, casual way with no JSON format.
             status = data.get("status", "Present")
             count = data.get("count", 1)
             worksheet.append_row([subject, date, status, count])
-
             final_reply = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[
@@ -640,9 +622,6 @@ Respond in a natural, casual way with no JSON format.
             )
             bot.send_message(message.chat.id, final_reply.choices[0].message["content"])
 
-        # -----------------------
-        # ATTENDANCE STATS
-        # -----------------------
         elif intent == "attendance_stats":
             sheet = client.open("TASK TRACKER").worksheet("Attendance")
             subject = data["subject"]
@@ -654,9 +633,7 @@ Respond in a natural, casual way with no JSON format.
             total = sum(int(r.get("Count", 0)) for r in subject_rows)
             present = sum(int(r.get("Count", 0)) for r in subject_rows if r["Status"].strip().lower() == "present")
             percent = round((present / total) * 100, 2) if total else 0
-
             stats = f"For {subject}, attended {present} classes out of {total}, which is {percent}% attendance."
-
             final_reply = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[
@@ -666,16 +643,12 @@ Respond in a natural, casual way with no JSON format.
             )
             bot.send_message(message.chat.id, final_reply.choices[0].message["content"])
 
-        # -----------------------
-        # REMINDER
-        # -----------------------
         elif intent == "reminder":
             reminder_text = data["task"]
             time_str = data["time"]
             date_str = data["date"]
             sheet = client.open("TASK TRACKER").worksheet("Reminders")
             sheet.append_row([reminder_text, date_str, time_str, "No"])
-
             final_reply = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[
@@ -684,17 +657,28 @@ Respond in a natural, casual way with no JSON format.
                 ]
             )
             bot.reply_to(message, final_reply.choices[0].message["content"])
-            
-        
 
-        # -----------------------
-        # UNKNOWN
-        # -----------------------
+        elif intent == "casual":
+            casual_text = data["text"]
+            convo_sheet = client.open("TASK TRACKER").worksheet("Conversations")
+            convo_sheet.append_row([current_time, casual_text])
+            past = convo_sheet.get_all_values()[-10:]
+            convo_history = "\n".join(f"{row[0]}: {row[1]}" for row in past)
+            final_reply = openai.ChatCompletion.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": CHARACTER_PROMPT + f"\nHere is the past conversation:\n{convo_history}"},
+                    {"role": "user", "content": casual_text}
+                ]
+            )
+            bot.send_message(message.chat.id, final_reply.choices[0].message["content"])
+
         else:
             bot.reply_to(message, "⚠️ Couldn't understand your request Buvi , Please try again my love ❤️.")
 
     except Exception as e:
         bot.reply_to(message, f"⚠️ Ouch! Buvi , there was an error : {e}")
+
 
 
 
