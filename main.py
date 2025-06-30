@@ -684,6 +684,8 @@ Respond in a natural, casual way with no JSON format.
                 ]
             )
             bot.reply_to(message, final_reply.choices[0].message["content"])
+            
+        
 
         # -----------------------
         # UNKNOWN
