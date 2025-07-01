@@ -560,7 +560,7 @@ Respond in a natural, casual way with no JSON format.
 
         elif intent == "question":
             question_text = data["question"]
-            hist_sheet = client.open("TASK TRACKER").worksheet("Questions")
+            hist_sheet = client.open("TASK TRACKER").worksheet("Queries")
             hist_sheet.append_row([current_time, f"User: {question_text}"])
             past_chat = hist_sheet.get_all_values()[-10:]
             chat_history = "\n".join(f"{row[0]}: {row[1]}" for row in past_chat)
