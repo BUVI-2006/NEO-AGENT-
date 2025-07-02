@@ -49,10 +49,10 @@ def check_reminders():
 
             for row in data:
 
-                if row["Status"].lower() !="pending":
+                if row["Status"].lower() !="No":
                     continue
                 task=row["Task"]
-                data_str=row["Date"]
+                date_str=row["Date"]
                 time_str=row["Time"]
 
                 task_time=datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
