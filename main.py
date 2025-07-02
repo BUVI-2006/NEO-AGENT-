@@ -49,7 +49,7 @@ def check_reminders():
 
             for row in data:
 
-                if row["Status"].lower() !="No":
+                if row["Status"].lower() !="no":
                     continue
                 task=row["Task"]
                 date_str=row["Date"]
