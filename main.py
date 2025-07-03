@@ -301,7 +301,7 @@ def handle_dreams_by_date(message):
         for i, dream in enumerate(matched_dreams, 1):
             response += f"{i}. *Type:* {dream.get('Dream Type', 'Unknown')}\n   *Description:* {dream.get('Dream Description', 'No details')}\n\n"
 
-        bot.send_message(message.chat.id, response, parse_mode="Markdown")
+        bot.send_message(message.chat.id, response)
 
     except Exception as e:
         bot.reply_to(message, f"⚠️ Error: {e}")
@@ -335,8 +335,7 @@ def handle_dream_stats(message):
             f"""Buvi ,here is it 📊 *Dream Stats*
 🌌 Lucid Dreams: {lucid_count}
 🌙 Non-Lucid Dreams: {non_lucid_count}
-📈 Lucid %: {lucid_percentage}%""",
-            parse_mode="Markdown"
+📈 Lucid %: {lucid_percentage}%"""
         )
 
     except Exception as e:
