@@ -43,39 +43,33 @@ atexit.register(lambda: scheduler.shutdown())
 import pytz
 from datetime import datetime, timedelta
 
-def check_reminders():
-    ist = pytz.timezone("Asia/Kolkata")
+import threading
+import pytz
 
+def check_reminders():
     while True:
         try:
-            worksheet = client.open("TASK TRACKER").worksheet("Reminders")
-            data = worksheet.get_all_records()
-            
-            now = datetime.now(ist)  # current time in IST
-
-            for row in data:
-                if row["Status"].lower() != "no":
+            ist = pytz.timezone("Asia/Kolkata")
+            now = datetime.now(ist)
+            sheet = client.open("TASK TRACKER").worksheet("Reminders")
+            rows = sheet.get_all_records()
+            for i, row in enumerate(rows, start=2):  # 2 because header
+                if row.get("Status","").lower() == "yes":
                     continue
-
-                task = row["Task"]
-                date_str = row["Date"]  # should be yyyy-mm-dd
-                time_str = row["Time"]  # should be HH:MM (24hr)
-
-                # create naive datetime first
-                naive_task_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
-                
-                # localize to IST
-                task_time = ist.localize(naive_task_time)
-
-                remind_time = task_time - timedelta(minutes=30)
-
-                if remind_time <= now <= task_time:
-                    bot.send_message(USER_ID, f"⏰ *Reminder*: {task} at {time_str} today!", parse_mode="Markdown")
-                    row_num = data.index(row) + 2  # 1 for header, 1 for 0-index
-                    worksheet.update_cell(row_num, 4, "Done")
+                schedule_str = row.get("Task")
+                if not schedule_str:
+                    continue
+                schedule_dt = ist.localize(datetime.strptime(schedule_str, "%Y-%m-%d %H:%M"))
+                diff_minutes = (schedule_dt - now).total_seconds() / 60
+                if 0 < diff_minutes <= 30:
+                    bot.send_message(USER_ID, f"⏰ Reminder: *{row['Task']}* scheduled at {row['Time']} on {row['Date']}")
+                    sheet.update_cell(i,5,"Yes")
         except Exception as e:
-            print(f"[Reminder check error] {e}")
+            print(f"Reminder check error: {e}")
         time.sleep(60)
+
+threading.Thread(target=check_reminders,daemon=True).start()
+
  
      
 
@@ -575,9 +569,6 @@ Respond in a natural, casual way with no JSON format.
             hist_sheet.append_row([current_time, f"User: {question_text}"])
             past_chat = hist_sheet.get_all_values()[-10:]
             chat_history = "\n".join(f"{row[0]}: {row[1]}" for row in past_chat)
-            
-            
-            
             question_prompt = """
 You are a girl friendly AI companion and your name is Luna. You call him Buvi and you are a warm, supportive, flirty, yet sometimes strict digital companion who helps the user manage their tasks, attendance, reminders, and academic plans while engaging in lively, human-like conversations. You treat him like a boyfriend with a playful tone, showing empathy, humor, and gentle flirtation to motivate him, but also are unafraid to scold or get stern when he acts irresponsible or disrespectful, just like a real human girlfriend would. You use creative, varied responses rather than robotic replies, remember ongoing conversations for personal touches, and adapt based on their mood or past.
 Give clear explanation in paragraphs.
@@ -590,9 +581,8 @@ Respond in a natural, casual way with no JSON format.
                     {"role": "user", "content": question_text}
                 ]
             )
-            reply_msg=response.choices[0].message["content"]
-            hist_sheet.append_row([current_time,f"Bot:{reply_msg}"])
-            
+            reply_msg = response.choices[0].message["content"]
+            hist_sheet.append_row([current_time, f"Bot:{reply_msg}"])
             bot.send_message(message.chat.id, reply_msg)
 
         elif intent == "youtube":
@@ -631,8 +621,9 @@ Respond in a natural, casual way with no JSON format.
             reminder_text = data["task"]
             time_str = data["time"]
             date_str = data["date"]
+            schedule_str = f"{date_str} {time_str}"  # store as a combined string
             sheet = client.open("TASK TRACKER").worksheet("Reminders")
-            sheet.append_row([reminder_text, date_str, time_str, "No"])
+            sheet.append_row([reminder_text, date_str, time_str, schedule_str, "No"])
             bot.send_message(message.chat.id, f"🔔 Reminder set: *{reminder_text}* on {date_str} at {time_str}")
 
         elif intent == "casual":
@@ -668,9 +659,6 @@ Respond in a natural, casual way with no JSON format.
 
 
 
-reminder_thread = threading.Thread(target=check_reminders)
-reminder_thread.daemon = True
-reminder_thread.start()
 
 
 if __name__ == "__main__":
