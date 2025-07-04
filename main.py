@@ -11,6 +11,7 @@ import requests
 from googleapiclient.discovery import build
 from flask import Flask , request
 from apscheduler.schedulers.background import BackgroundScheduler
+import pytz
 from pytz import timezone
 import atexit
 import time
@@ -39,32 +40,43 @@ scheduler.start()
 #Ensure it stops on shutdown
 atexit.register(lambda: scheduler.shutdown())
 
+import pytz
+from datetime import datetime, timedelta
+
 def check_reminders():
+    ist = pytz.timezone("Asia/Kolkata")
+
     while True:
         try:
             worksheet = client.open("TASK TRACKER").worksheet("Reminders")
-            data=worksheet.get_all_records()
-            now=datetime.now()
-
+            data = worksheet.get_all_records()
+            
+            now = datetime.now(ist)  # current time in IST
 
             for row in data:
-
-                if row["Status"].lower() !="no":
+                if row["Status"].lower() != "no":
                     continue
-                task=row["Task"]
-                date_str=row["Date"]
-                time_str=row["Time"]
 
-                task_time=datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
-                remind_time=task_time - timedelta(minutes=30)
+                task = row["Task"]
+                date_str = row["Date"]  # should be yyyy-mm-dd
+                time_str = row["Time"]  # should be HH:MM (24hr)
+
+                # create naive datetime first
+                naive_task_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
                 
-                if now>= remind_time and now <= task_time:
+                # localize to IST
+                task_time = ist.localize(naive_task_time)
+
+                remind_time = task_time - timedelta(minutes=30)
+
+                if remind_time <= now <= task_time:
                     bot.send_message(USER_ID, f"⏰ *Reminder*: {task} at {time_str} today!", parse_mode="Markdown")
                     row_num = data.index(row) + 2  # 1 for header, 1 for 0-index
                     worksheet.update_cell(row_num, 4, "Done")
         except Exception as e:
             print(f"[Reminder check error] {e}")
-        time.sleep(60)    
+        time.sleep(60)
+ 
      
 
 
