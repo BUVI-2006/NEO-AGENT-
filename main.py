@@ -623,7 +623,7 @@ Respond in a natural, casual way with no JSON format.
             date_str = data["date"]
             schedule_str = f"{date_str} {time_str}"  # store as a combined string
             sheet = client.open("TASK TRACKER").worksheet("Reminders")
-            sheet.append_row([reminder_text, date_str, time_str, schedule_str, "No"])
+            sheet.append_row([reminder_text, date_str, time_str, "No"])
             bot.send_message(message.chat.id, f"🔔 Reminder set: *{reminder_text}* on {date_str} at {time_str}")
 
         elif intent == "casual":
