@@ -516,7 +516,7 @@ Respond in a natural, casual way with no JSON format.
         if intent == "add":
             worksheet.append_row([data["task"], data["deadline"], "No", "0%", ""])
             log_action(sheet, data["task"], "Added", "No")
-            bot.reply_to(message, f"✅ Added *{data['task']}* to *{sheet}* with deadline {data['deadline']}.", parse_mode="Markdown")
+            bot.reply_to(message, f"✅ Added *{data['task']}* to *{sheet}* with deadline {data['deadline']}.")
 
         elif intent == "update":
             all_rows = worksheet.get_all_records()
@@ -529,7 +529,7 @@ Respond in a natural, casual way with no JSON format.
                     log_action(sheet, data["task"], "Updated", data["status"])
                     bot.reply_to(message, f"🔄 Updated *{data['task']}* in *{sheet}* to *{data['status']}* with progress *{data['progress']}*.", parse_mode="Markdown")
                     return
-            bot.reply_to(message, f"❌ Task *{data['task']}* not found in {sheet}.", parse_mode="Markdown")
+            bot.reply_to(message, f"❌ Task *{data['task']}* not found in {sheet}.")
 
         elif intent == "progress":
             all_rows = worksheet.get_all_records()
@@ -543,7 +543,7 @@ Respond in a natural, casual way with no JSON format.
             )
             avg = round(total_progress / total, 2) if total else 0
             summary = f"*{sheet}*\n✅ Completed: {completed}\n🟡 In progress: {in_progress}\n⭕ Not started: {not_started}\n📊 Avg progress: {avg}%"
-            bot.send_message(message.chat.id, summary, parse_mode="Markdown")
+            bot.send_message(message.chat.id, summary)
 
         elif intent == "suggest":
             all_rows = worksheet.get_all_records()
@@ -567,7 +567,7 @@ Respond in a natural, casual way with no JSON format.
             pending.sort(key=lambda x: (x[1], x[2], x[3]))
             suggestion = pending[0][0]
             due_date = pending[0][1].strftime("%Y-%m-%d")
-            bot.send_message(message.chat.id, f"👉 *Next suggested task:* {suggestion}\n⏰ Due: {due_date}", parse_mode="Markdown")
+            bot.send_message(message.chat.id, f"👉 *Next suggested task:* {suggestion}\n⏰ Due: {due_date}")
 
         elif intent == "question":
             question_text = data["question"]
@@ -602,7 +602,7 @@ Respond in a natural, casual way with no JSON format.
                 bot.send_message(message.chat.id, "❌ No videos found.")
             else:
                 for title, url in results:
-                    bot.send_message(message.chat.id, f"🎥 *{title}*\n{url}", parse_mode="Markdown")
+                    bot.send_message(message.chat.id, f"🎥 *{title}*\n{url}")
 
         elif intent == "attendance":
             worksheet = client.open("TASK TRACKER").worksheet("Attendance")
@@ -611,7 +611,7 @@ Respond in a natural, casual way with no JSON format.
             status = data.get("status", "Present")
             count = data.get("count", 1)
             worksheet.append_row([subject, date, status, count])
-            bot.send_message(message.chat.id, f"📝 Marked *{status}* for *{subject}* on {date}.", parse_mode="Markdown")
+            bot.send_message(message.chat.id, f"📝 Marked *{status}* for *{subject}* on {date}.")
 
         elif intent == "attendance_stats":
             sheet = client.open("TASK TRACKER").worksheet("Attendance")
@@ -625,7 +625,7 @@ Respond in a natural, casual way with no JSON format.
             present = sum(int(r.get("Count", 0)) for r in subject_rows if r["Status"].strip().lower() == "present")
             percent = round((present / total) * 100, 2) if total else 0
             stats = f"*{subject}*: present {present}/{total} classes\nAttendance: {percent}%"
-            bot.send_message(message.chat.id, stats, parse_mode="Markdown")
+            bot.send_message(message.chat.id, stats)
 
         elif intent == "reminder":
             reminder_text = data["task"]
@@ -633,7 +633,7 @@ Respond in a natural, casual way with no JSON format.
             date_str = data["date"]
             sheet = client.open("TASK TRACKER").worksheet("Reminders")
             sheet.append_row([reminder_text, date_str, time_str, "No"])
-            bot.send_message(message.chat.id, f"🔔 Reminder set: *{reminder_text}* on {date_str} at {time_str}", parse_mode="Markdown")
+            bot.send_message(message.chat.id, f"🔔 Reminder set: *{reminder_text}* on {date_str} at {time_str}")
 
         elif intent == "casual":
             casual_text = data["text"]
