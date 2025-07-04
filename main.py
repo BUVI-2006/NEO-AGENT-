@@ -31,7 +31,34 @@ def evening_attendance_summary():
         bot.send_message(USER_ID,"📝 Don’t forget to log your attendance for today , Buvi!")
     except Exception as e:
         print(f"[Scheduler] Attendance reminder error: {e}")
-        
+def check_scheduled_reminders():
+    try:
+        ist = pytz.timezone("Asia/Kolkata")
+        now = datetime.now(ist)
+        sheet = client.open("TASK TRACKER").worksheet("Reminders")
+        rows = sheet.get_all_records()
+        for i, row in enumerate(rows, start=2):
+            if row.get("Status","").lower() == "yes":
+                continue
+            schedule_str = row.get("Task")
+            if not schedule_str:
+                continue
+            # convert schedule string to datetime
+            schedule_dt = ist.localize(datetime.strptime(schedule_str, "%Y-%m-%d %H:%M"))
+            diff_minutes = (schedule_dt - now).total_seconds() / 60
+            if 0 < diff_minutes <= 30:
+                bot.send_message(
+                    USER_ID,
+                    f"⏰ Reminder: *{row['Task']}* scheduled at {row['Time']} on {row['Date']}"
+                
+                )
+                # mark as sent
+                sheet.update_cell(i, 5, "Yes")
+    except Exception as e:
+        print(f"[Scheduler] Reminder check error: {e}")
+
+
+scheduler.add_job(check_scheduled_reminders, 'interval', minutes=5)
 scheduler.add_job(morning_task_alert, 'cron', hour=8, minute=0)
 scheduler.add_job(evening_attendance_summary, 'cron',hour=20,minute=0)
 
@@ -40,35 +67,10 @@ scheduler.start()
 #Ensure it stops on shutdown
 atexit.register(lambda: scheduler.shutdown())
 
-import pytz
-from datetime import datetime, timedelta
 
-import threading
-import pytz
 
-def check_reminders():
-    while True:
-        try:
-            ist = pytz.timezone("Asia/Kolkata")
-            now = datetime.now(ist)
-            sheet = client.open("TASK TRACKER").worksheet("Reminders")
-            rows = sheet.get_all_records()
-            for i, row in enumerate(rows, start=2):  # 2 because header
-                if row.get("Status","").lower() == "yes":
-                    continue
-                schedule_str = row.get("Task")
-                if not schedule_str:
-                    continue
-                schedule_dt = ist.localize(datetime.strptime(schedule_str, "%Y-%m-%d %H:%M"))
-                diff_minutes = (schedule_dt - now).total_seconds() / 60
-                if 0 < diff_minutes <= 30:
-                    bot.send_message(USER_ID, f"⏰ Reminder: *{row['Task']}* scheduled at {row['Time']} on {row['Date']}")
-                    sheet.update_cell(i,5,"Yes")
-        except Exception as e:
-            print(f"Reminder check error: {e}")
-        time.sleep(60)
 
-threading.Thread(target=check_reminders,daemon=True).start()
+       
 
  
      
