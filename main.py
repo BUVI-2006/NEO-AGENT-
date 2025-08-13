@@ -566,12 +566,12 @@ Respond in a natural, casual way with no JSON format.
             summary = f"*{sheet}*\n✅ Completed: {completed}\n🟡 In progress: {in_progress}\n⭕ Not started: {not_started}\n📊 Avg progress: {avg}%"
             bot.send_message(message.chat.id, summary)
 
-        elif intent == "suggest":
+        elif intent == "suggest" or intent == "summary":
             all_rows = worksheet.get_all_records()
             pending = []
             for r in all_rows:
                 status = r.get("Status", "").strip().lower()
-                if status != "yes":
+                if status.lower().stip() not in ["yes","completed","done"]:
                     try:
                         deadline = datetime.strptime(r.get("Deadline", "2099-12-31"), "%Y-%m-%d")
                     except:
