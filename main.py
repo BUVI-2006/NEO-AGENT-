@@ -571,7 +571,7 @@ Respond in a natural, casual way with no JSON format.
             pending = []
             for r in all_rows:
                 status = r.get("Status", "").strip().lower()
-                if status.lower().stip() not in ["yes","completed","done"]:
+                if status.lower().strip() not in ["yes","completed","done"]:
                     try:
                         deadline = datetime.strptime(r.get("Deadline", "2099-12-31"), "%Y-%m-%d")
                     except:
