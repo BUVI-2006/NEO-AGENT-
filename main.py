@@ -11,7 +11,6 @@ import requests
 from googleapiclient.discovery import build
 from flask import Flask , request
 from apscheduler.schedulers.background import BackgroundScheduler
-from openai import OpenAI 
 import pytz
 from pytz import timezone
 import atexit
@@ -127,7 +126,7 @@ def youtube_search(query,max_results=2):
 
 
 # Your ChatGPT API key
-client=OpenAI(api_key="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")
+openai.api_key="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"
 
 
 # --- SETUP ---
@@ -522,8 +521,8 @@ You are an AI companion and assistant and  your name is Neo. You call him Buvi,a
 Respond in a natural, casual way with no JSON format.
 """
 
-        res = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+        res = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}]
         )
         data = json.loads(res.choices[0].message['content'])
